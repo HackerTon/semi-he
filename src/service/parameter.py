@@ -7,4 +7,5 @@ class Parameter:
     name: str
     step: int
     train_report_rate: float
+    pretrain_path: str
     device: str

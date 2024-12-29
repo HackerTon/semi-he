@@ -23,7 +23,6 @@ class ModelSaverService:
                 self._generate_save_name(first_epoch_to_delete)
             )
             remove(model_to_delete)
-            print(f"{self._generate_save_name(first_epoch_to_delete)} removed!")
 
     def save_without_shape(self, model: torch.nn.Module, epoch: int):
         self._checkAndExisting()

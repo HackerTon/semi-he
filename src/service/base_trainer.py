@@ -23,8 +23,8 @@ class BaseTrainer:
             name=parameter.name,
         )
 
-    def run_trainer(self):
-        raise NotImplementedError("Please implement run_trainer")
+    def train(self):
+        raise NotImplementedError("Please implement train")
 
     def _save(self, model: torch.nn.Module, epoch: int):
         self.model_saver.save_without_shape(model, epoch)

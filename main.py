@@ -2,35 +2,28 @@ import argparse
 from pathlib import Path
 
 from src.service.parameter import Parameter
-from src.service.trainer import Trainer
+from src.service.trainer_v2 import TrainerV2
 
 
-def run(
-    name: str,
-    epoch: int,
-    device: str,
-    batch_size: int,
-    path: str,
-    learning_rate: float,
-    step: int,
-):
-    if not Path(path).exists():
-        print(f"Dataset not found in '{path}'")
+def run(namespace: argparse.Namespace):
+    if not Path(namespace.path).exists():
+        print(f"Dataset not found in '{namespace.path}'")
         return
 
     parameter = Parameter()
-    parameter.epoch = epoch
-    parameter.name = name
-    parameter.batch_size_test = batch_size
-    parameter.batch_size_train = batch_size
-    parameter.learning_rate = learning_rate
-    parameter.data_path = path
-    parameter.step = step
+    parameter.epoch = namespace.epoch
+    parameter.name = namespace.name
+    parameter.batch_size_test = namespace.batchsize
+    parameter.batch_size_train = namespace.batchsize
+    parameter.learning_rate = namespace.learning_rate
+    parameter.data_path = namespace.path
+    parameter.step = namespace.step
     parameter.train_report_rate = 0.1
-    parameter.device = device
+    parameter.device = namespace.mode
+    parameter.pretrain_path = namespace.pretrain_path
 
-    trainer = Trainer(parameter)
-    trainer.run_trainer()
+    trainer = TrainerV2(parameter)
+    trainer.train()
 
 
 if __name__ == "__main__":
@@ -40,6 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--batchsize", default=1, type=int)
     parser.add_argument("-p", "--path", required=True, type=str)
     parser.add_argument("-l", "--learning_rate", default=0.001, type=float)
+    parser.add_argument("--pretrain_path", required=True)
     parser.add_argument(
         "-n",
         "--name",
@@ -56,12 +50,4 @@ if __name__ == "__main__":
     )
 
     parsed_data = parser.parse_args()
-    run(
-        name=parsed_data.name,
-        epoch=parsed_data.epoch,
-        device=parsed_data.mode,
-        batch_size=parsed_data.batchsize,
-        path=parsed_data.path,
-        learning_rate=parsed_data.learning_rate,
-        step=parsed_data.step,
-    )
+    run(parsed_data)

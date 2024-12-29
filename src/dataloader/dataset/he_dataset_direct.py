@@ -13,10 +13,11 @@ class HeDataset(Dataset):
     def _initialize_dataset(self):
         image_length = len(list(self.directory.glob("*_image.png")))
         label_length = len(list(self.directory.glob("*_label.png")))
+        uncertainty_length = len(list(self.directory.glob("*_uncertainty.bin")))
 
-        if image_length != label_length:
+        if image_length != label_length != uncertainty_length:
             raise Exception(
-                f"Image length {image_length} != label length {label_length}"
+                f"Image length {image_length} != label length {label_length} != uncertainty_length {uncertainty_length}"
             )
 
         self.dataset_length = image_length
@@ -39,10 +40,12 @@ class HeDataset(Dataset):
     def __getitem__(self, index):
         image_path = str(self.directory.joinpath(f"{index}_image.png"))
         label_path = str(self.directory.joinpath(f"{index}_label.png"))
+        uncertainty_path = str(self.directory.joinpath(f"{index}_uncertainty.bin"))
         image = read_image(image_path, ImageReadMode.RGB)
         label = read_image(label_path, ImageReadMode.GRAY)
         label = self.get_mask(label).to(torch.uint8)
-        return image, label
+        uncertainty = torch.from_file(uncertainty_path, size=256 * 256)
+        return image, label, uncertainty.view([256, 256]).squeeze()
 
 
 if __name__ == "__main__":
@@ -51,7 +54,7 @@ if __name__ == "__main__":
 
     dataset = HeDataset("data/ukmtils_pseudo")
     i = 0
-    for image, mask in DataLoader(dataset, shuffle=False, num_workers=4):
+    for image, mask, uncertainty in DataLoader(dataset, shuffle=False, num_workers=4):
         # write_jpeg(image, "image.jpg")
         # write_jpeg(mask[0].unsqueeze(0), "mask.jpg")
         # if i == 5:

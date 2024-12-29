@@ -4,9 +4,7 @@ import torch
 from torch.utils.data import random_split
 from torch.utils.data.dataloader import DataLoader
 from torchvision.transforms import v2
-from torchvision.transforms.v2.functional import crop, five_crop
 
-# from src.dataloader.dataset.he_dataset import HeDataset
 from src.dataloader.dataset.he_dataset_direct import HeDataset
 from src.dataloader.transform import ImagenetNormalize, ToNormalized
 from src.experiment.experimentbase import ExperimentBase
@@ -24,6 +22,7 @@ class HeExperiment(ExperimentBase):
         )
 
         self.model = UNETNetwork(numberClass=3)
+        self.model_teacher = UNETNetwork(numberClass=3)
         self.preprocessor = v2.Compose(
             [
                 ToNormalized(),
@@ -32,19 +31,19 @@ class HeExperiment(ExperimentBase):
         )
 
         # Move weights to specified device
+        # Load model
+        weights = torch.load(parameter.pretrain_path)
+        self.model.load_state_dict(weights)
         self.model = self.model.to(parameter.device)
 
-        self.optimizer = torch.optim.AdamW(
+        self.model_teacher.load_state_dict(weights)
+        self.model_teacher = self.model_teacher.to(parameter.device)
+
+        self.optimizer = torch.optim.Adam(
             params=self.model.parameters(),
             lr=parameter.learning_rate,
             fused=True if parameter.device == "cuda" else False,
         )
-        # self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        #     optimizer=self.optimizer,
-        #     max_lr=hyperparameter.learning_rate,
-        #     steps_per_epoch=len(self.train_dataloader),
-        #     epochs=hyperparameter.epoch,
-        # )
 
 
 def cross_entropy_dirichlet(prediction: torch.Tensor, target: torch.Tensor):
@@ -84,41 +83,25 @@ def overall_loss(
     return loss.mean()
 
 
-random_generator = torch.Generator().manual_seed(1234)
+def consistency_loss(prediction: torch.Tensor, target: torch.Tensor):
+    return (prediction - target).pow(2).mean()
 
 
-def train_collate(data):
-    current_size = 512
-    images = []
-    labels = []
-
-    # If current_size is the same size as input
-    # skip cropping
-    if data[0][0].size(1) == current_size:
-        for x in data:
-            image, label = x
-            images.append(image)
-            labels.append(label)
-    else:
-        for x in data:
-            image, label = x
-            i, j, h, w = v2.RandomCrop.get_params(image, (current_size, current_size))
-            images.append(crop(image, i, j, h, w))
-            labels.append(crop(label, i, j, h, w))
-    return (torch.stack(images), torch.stack(labels))
-
-
-def test_collate(data):
-    images = []
-    labels = []
-    for x in data:
-        image, label = x
-        split_image = five_crop(image, [512, 512])
-        split_label = five_crop(label, [512, 512])
-        for i in range(5):
-            images.append(split_image[i])
-            labels.append(split_label[i])
-    return (torch.stack(images), torch.stack(labels))
+def overall_with_uncertainty(
+    prediction: torch.Tensor,
+    target: torch.Tensor,
+    lambda_t: torch.Tensor,
+    uncertainty: torch.Tensor = None,
+):
+    prediction = prediction.relu()
+    loss = cross_entropy_dirichlet(prediction, target)
+    loss += lambda_t * KL_divergence_dirichlet(
+        prediction,
+        target,
+    )
+    if uncertainty is None:
+        uncertainty = torch.ones_like(loss)
+    return ((1 - uncertainty) * loss).mean()
 
 
 def create_dataloader(
@@ -138,13 +121,11 @@ def create_dataloader(
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        # collate_fn=train_collate,
         num_workers=num_workers,
     )
     test_dataloader = DataLoader(
         test_dataset,
-        # collate_fn=test_collate,
-        batch_size=8,
+        batch_size=128,
         num_workers=num_workers,
     )
     return train_dataloader, test_dataloader

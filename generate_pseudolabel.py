@@ -2,16 +2,17 @@ import argparse
 from pathlib import Path
 
 import torch
-from torchvision.io.image import write_png
-from src.model.model import UNETNetwork
 from torch.utils.data import DataLoader
-from src.dataloader.dataset.he_dataset import HeDataset
-from src.dataloader.transform import ToNormalized, ImagenetNormalize
+from torchvision.io.image import write_png
 from torchvision.transforms.v2 import Compose
 from tqdm import tqdm
 
+from src.dataloader.dataset.he_dataset import HeDataset
+from src.dataloader.transform import ImagenetNormalize, ToNormalized
+from src.model.model import UNETNetwork
+
 BATCH_SIZE = 128
-UNCERTAINTY_THRESHOLD = 0.01
+UNCERTAINTY_THRESHOLD = 1.0
 NSAMPLES = 998  # NSAMPLES for uniform random selection
 
 
@@ -20,6 +21,21 @@ def write_sample(image, label, directory: Path, index):
     label_path = directory.joinpath(f"{index}_label.png")
     write_png(image, str(image_path))
     write_png(label, str(label_path))
+
+
+def write_sample_with_uncertainty(
+    image,
+    label,
+    uncertainty: torch.Tensor,
+    directory: Path,
+    index,
+):
+    image_path = directory.joinpath(f"{index}_image.png")
+    label_path = directory.joinpath(f"{index}_label.png")
+    uncertainty_path = directory.joinpath(f"{index}_uncertainty.bin")
+    write_png(image, str(image_path))
+    write_png(label, str(label_path))
+    uncertainty.numpy().tofile(uncertainty_path)
 
 
 def baseline_inference(
@@ -70,15 +86,15 @@ def dirichlet_inference(
         dirichlet_strength = alpha.sum(dim=1)
         prediction = alpha / dirichlet_strength.unsqueeze(1)
 
-        uncertainty_median = (
-            (3 / dirichlet_strength).flatten(start_dim=1).median(dim=1).values
-        )
+        uncertainty = 3 / dirichlet_strength
+        uncertainty_median = uncertainty.flatten(start_dim=1).median(dim=1).values
 
-        wanted_samples = (uncertainty_median < UNCERTAINTY_THRESHOLD).argwhere().cpu()
+        wanted_samples = (uncertainty_median <= UNCERTAINTY_THRESHOLD).argwhere().cpu()
         for index in wanted_samples:
-            write_sample(
+            write_sample_with_uncertainty(
                 image[index[0]].cpu(),
                 prediction[index[0]].argmax(dim=0, keepdim=True).to(torch.uint8).cpu(),
+                uncertainty[index[0]].cpu(),
                 pseudo_path,
                 sample_num,
             )
@@ -110,6 +126,7 @@ def run(namespace):
     if namespace.mode == "baseline":
         baseline_inference(model, dataloader, preprocessor, pseudo_path)
     elif namespace.mode == "dirichlet":
+        print(pseudo_path)
         dirichlet_inference(model, dataloader, preprocessor, pseudo_path)
     else:
         print("mode is not baseline or dirichlet")
