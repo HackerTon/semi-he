@@ -13,14 +13,16 @@ Example command
 ## semi supervised
 * Generate pseudo-label for baseline
 ```
-python generate_pseudolabel.py --model data/model/20241211_013306_tiger_baseline_fix_lambda_0.02max_500_bs16/499_tiger_baseline_fix_lambda_0.02max_500_bs16_model.pt \
+python generate_pseudolabel.py \
+--model data/model/20241211_013306_tiger_baseline_fix_lambda_0.02max_500_bs16 499_tiger_baseline_fix_lambda_0.02max_500_bs16_model.pt \
 --dataset_dir /mnt/storage/Dataset130_ukmtils \
 --pseudo_dir data/ukmtils_pseudo_b \
 --mode baseline
 ```
 * Generate pseudo-label for proposed model
 ```
-python generate_pseudolabel.py --model data/model/20241211_004039_tiger_proposed_fix_lambda_0.02max_500_bs16/361_tiger_proposed_fix_lambda_0.02max_500_bs16_model.pt \
+python generate_pseudolabel.py \
+--model data/model/20241211_004039_tiger_proposed_fix_lambda_0.02max_500_bs16/361_tiger_proposed_fix_lambda_0.02max_500_bs16_model.pt \
 --dataset_dir /mnt/storage/Dataset130_ukmtils \
 --pseudo_dir data/ukmtils_pseudo \
 --mode dirichlet
