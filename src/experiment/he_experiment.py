@@ -8,7 +8,7 @@ from torchvision.transforms import v2
 from src.dataloader.dataset.he_dataset_direct import HeDataset
 from src.dataloader.transform import ImagenetNormalize, ToNormalized
 from src.experiment.experimentbase import ExperimentBase
-from src.model.model import UNETNetwork
+from src.model.model import UNETNetwork, UNETNetworkModi
 from src.service.parameter import Parameter
 
 
@@ -21,8 +21,8 @@ class HeExperiment(ExperimentBase):
             batch_size=parameter.batch_size_train,
         )
 
-        self.model = UNETNetwork(numberClass=3)
-        self.model_teacher = UNETNetwork(numberClass=3)
+        self.model = UNETNetworkModi(numberClass=3)
+        self.model_teacher = UNETNetworkModi(numberClass=3)
         self.preprocessor = v2.Compose(
             [
                 ToNormalized(),
@@ -33,10 +33,9 @@ class HeExperiment(ExperimentBase):
         # Move weights to specified device
         # Load model
         weights = torch.load(parameter.pretrain_path)
-        self.model.load_state_dict(weights)
+        self.model.load_state_dict(weights, strict=False)
         self.model = self.model.to(parameter.device)
-
-        self.model_teacher.load_state_dict(weights)
+        self.model_teacher.load_state_dict(weights, strict=False)
         self.model_teacher = self.model_teacher.to(parameter.device)
 
         self.optimizer = torch.optim.Adam(

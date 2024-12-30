@@ -33,6 +33,10 @@ class TrainerV2(BaseTrainer):
 
     def train(self):
         for epoch in tqdm(range(self.parameter.epoch)):
+            # Unfreeze backbone at epoch 2
+            # if epoch == 10:
+            #     for parameter in self.model.parameters():
+            #         parameter.requires_grad = True
             self._train_one_epoch(epoch)
             if self.test_dataloader is not None:
                 self._eval_one_epoch(epoch)
@@ -45,10 +49,10 @@ class TrainerV2(BaseTrainer):
         )
         running_loss = 0.0
         running_iou = 0.0
-
         self.model.train()
         lambda_t = torch.tensor((epoch / self.parameter.epoch) * 0.02)
         scaler = torch.cuda.amp.grad_scaler.GradScaler()
+
         for index, data in enumerate(self.train_dataloader):
             with torch.autocast(device_type=self.parameter.device, dtype=self.dtype):
                 inputs: torch.Tensor
@@ -63,22 +67,34 @@ class TrainerV2(BaseTrainer):
                 inputs, labels = self.preprocessor(inputs, labels)
 
                 outputs = self.model(inputs)
-                alpha = outputs.relu() + 1
-                dirichlet_strength = alpha.sum(dim=1, keepdim=True)
-                prediction = alpha / dirichlet_strength
-
+                output_belief, output_uncertainty = combined_dirichlet(
+                    outputs[0].relu(),
+                    outputs[1].relu(),
+                )
+                evidences = output_belief * 3 / output_uncertainty
+                prediction = convert_belief_mass_to_prediction(
+                    output_belief,
+                    output_uncertainty,
+                )
                 loss = self.loss_fn(
-                    outputs,
+                    evidences,
                     labels,
                     lambda_t,
                     uncertainty,
                 )
 
                 with torch.no_grad():
-                    tearcher_output = self.model_teacher(inputs)
-                    teacher_alpha = tearcher_output.relu() + 1
-                    teacher_dirichlet_strength = teacher_alpha.sum(dim=1, keepdim=True)
-                    teacher_prediction = teacher_alpha / teacher_dirichlet_strength
+                    teacher_output = self.model_teacher(inputs)
+                    teacher_output_belief, teacher_output_uncertainty = (
+                        combined_dirichlet(
+                            teacher_output[0].relu(),
+                            teacher_output[0].relu(),
+                        )
+                    )
+                    teacher_prediction = convert_belief_mass_to_prediction(
+                        teacher_output_belief,
+                        teacher_output_uncertainty,
+                    )
 
                 loss += consistency_loss(prediction, teacher_prediction)
                 iou_score = dice_index(prediction, labels)
@@ -138,10 +154,16 @@ class TrainerV2(BaseTrainer):
                     inputs, labels = self.preprocessor(inputs, labels)
 
                     outputs = self.model_teacher(inputs)
-                    alpha = outputs.relu() + 1
-                    dirichlet_strength = alpha.sum(dim=1, keepdim=True)
-                    prediction = alpha / dirichlet_strength
-                    loss = self.loss_fn(outputs, labels, lambda_t, uncertainty)
+                    output_belief, output_uncertainty = combined_dirichlet(
+                        outputs[0].relu(),
+                        outputs[1].relu(),
+                    )
+                    evidences = output_belief * 3 / output_uncertainty
+                    prediction = convert_belief_mass_to_prediction(
+                        output_belief,
+                        output_uncertainty,
+                    )
+                    loss = self.loss_fn(evidences, labels, lambda_t, uncertainty)
                     iou_score = dice_index(prediction, labels)
 
                     sum_loss += loss.item()
@@ -152,3 +174,38 @@ class TrainerV2(BaseTrainer):
         avg_iou = sum_iou / len(self.test_dataloader)
         self.writer_test.add_scalar("loss", avg_loss, iteration)
         self.writer_test.add_scalar("iou_score", avg_iou, iteration)
+
+
+def combined_dirichlet(evidence_a, evidence_b, k_class=3):
+    """
+    evidences: [batchsize, channel, H, W]
+    """
+
+    alpha_a = evidence_a + 1
+    alpha_b = evidence_b + 1
+    dirichlet_strength_a = alpha_a.sum(dim=1, keepdim=True)
+    dirichlet_strength_b = alpha_b.sum(dim=1, keepdim=True)
+    belief_a = evidence_a / dirichlet_strength_a
+    belief_b = evidence_b / dirichlet_strength_b
+    uncertainty_a = k_class / dirichlet_strength_a
+    uncertainty_b = k_class / dirichlet_strength_b
+
+    sum_conflicts = (
+        belief_a.unsqueeze(2)
+        * belief_b.unsqueeze(1)
+        * (1 - torch.eye(k_class, device="cuda").view(1, k_class, k_class, 1, 1))
+    ).sum([1, 2])
+
+    scale_factor = 1 / (1 - sum_conflicts).unsqueeze(1)
+
+    combined_beliefs = (
+        scale_factor * belief_a * belief_b
+        + belief_a * uncertainty_b
+        + belief_b * uncertainty_a
+    )
+    combined_uncertainties = scale_factor * uncertainty_a * uncertainty_b
+    return combined_beliefs, combined_uncertainties
+
+
+def convert_belief_mass_to_prediction(belief, uncertainty, k_class=3):
+    return belief + uncertainty / k_class
