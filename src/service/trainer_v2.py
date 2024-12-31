@@ -88,7 +88,7 @@ class TrainerV2(BaseTrainer):
                     teacher_output_belief, teacher_output_uncertainty = (
                         combined_dirichlet(
                             teacher_output[0].relu(),
-                            teacher_output[0].relu(),
+                            teacher_output[1].relu(),
                         )
                     )
                     teacher_prediction = convert_belief_mass_to_prediction(
