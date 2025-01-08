@@ -76,7 +76,6 @@ class TrainerBaseline(BaseTrainer):
                     labels.to(self.parameter.device),
                 )
                 inputs, labels = self.preprocessor(inputs, labels)
-
                 output_logits = self.model(inputs)
                 loss = self.loss_fn(output_logits, labels)
                 iou_score = dice_index(output_logits.sigmoid(), labels)
@@ -108,24 +107,24 @@ class TrainerBaseline(BaseTrainer):
         sum_iou = 0.0
 
         self.model.eval()
-        with torch.no_grad():
+        for data in self.test_dataloader:
             with torch.autocast(device_type=self.parameter.device, dtype=self.dtype):
-                for data in self.test_dataloader:
-                    inputs: torch.Tensor
-                    labels: torch.Tensor
-                    inputs, labels = data
+                inputs: torch.Tensor
+                labels: torch.Tensor
+                inputs, labels = data
 
-                    inputs, labels = (
-                        inputs.to(self.parameter.device),
-                        labels.to(self.parameter.device),
-                    )
+                inputs, labels = (
+                    inputs.to(self.parameter.device),
+                    labels.to(self.parameter.device),
+                )
+                with torch.no_grad():
                     inputs, labels = self.preprocessor(inputs, labels)
                     output_logits = self.model(inputs)
                     loss = self.loss_fn(output_logits, labels)
                     iou_score = dice_index(output_logits.sigmoid(), labels)
 
-                sum_loss += loss.item()
-                sum_iou += iou_score.item()
+            sum_loss += loss.item()
+            sum_iou += iou_score.item()
 
         iteration = (epoch + 1) * len(self.train_dataloader)
         avg_loss = sum_loss / len(self.test_dataloader)
