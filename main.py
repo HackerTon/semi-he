@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 
 from src.service.parameter import Parameter
-from src.service.trainer_v2 import TrainerV2
+from src.service.trainer_baseline import TrainerBaseline
 
 
 def run(namespace: argparse.Namespace):
@@ -22,7 +22,7 @@ def run(namespace: argparse.Namespace):
     parameter.device = namespace.mode
     parameter.pretrain_path = namespace.pretrain_path
 
-    trainer = TrainerV2(parameter)
+    trainer = TrainerBaseline(parameter)
     trainer.train()
 
 

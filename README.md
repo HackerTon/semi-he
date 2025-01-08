@@ -30,5 +30,35 @@ python generate_pseudolabel.py \
 
 * Train baseline on pseudo-label
 ```
-python main.py -p data/ukmtils_pseudo_b  -b 16 -m cuda --learning_rate 0.0001 --name 'tiger baseline 500 bs16 pseudo' -e 500
+python main.py --path data/ukmtils_pseudo_baseline \
+--batchsize 16 \
+--mode cuda \
+--learning_rate 0.0001 \
+--name 'ukmtils baseline epoch500 bs16 pseudo' \
+--epoch 500 \ 
+--pretrain_path data/model/20241221_185129_tiger_baseline_500_bs16_pseudo/
+```
+
+```
+python main.py --path /mnt/storage/ocelot2023_v1.0.1 \
+--batchsize 16 \
+--mode cuda \
+--learning_rate 0.0001 \
+--name 'ocelot baseline epoch500 bs16 pseudo' \
+--epoch 500 \
+--pretrain_path data/model/20241221_185129_tiger_baseline_500_bs16_pseudo/499_tiger_baseline_500_bs16_pseudo_model.pt
+```
+
+* Evaluate on dirichlet UKMTILS
+```
+python evaluation.py --model data/model/20241230_151702_proposed/499_proposed_model.pt \
+--dataset_dir data/ukmtils_pseudo \         
+--mode dirichlet
+```
+
+* Evaluate on baseline UKMTILS
+```
+python evaluation.py --model data/model/20241221_185129_tiger_baseline_500_bs16_pseudo/499_tiger_baseline_500_bs16_pseudo_model.pt \
+--dataset_dir data/ukmtils_pseudo_baseline \
+--mode baseline 
 ```

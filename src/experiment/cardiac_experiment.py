@@ -34,7 +34,7 @@ class CardiacExperiment(ExperimentBase):
         )
 
         if model == "unet":
-            self.model = UNETNetwork(numberClass=3)
+            self.model = UNETNetwork(number_class=3)
         elif model == "multinet":
             self.model = MultiNet(numberClass=3, backboneType=BackboneType.RESNET50)
         elif model == "fpn":

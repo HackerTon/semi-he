@@ -54,8 +54,8 @@ def baseline_inference(
         prediction = prediction.softmax(dim=1)
 
         for index in range(prediction.size(0)):
-            if sample_num == NSAMPLES:
-                break
+            # if sample_num == NSAMPLES:
+            # break
 
             write_sample(
                 image[index].cpu(),
@@ -65,8 +65,8 @@ def baseline_inference(
             )
             sample_num += 1
 
-        if sample_num == NSAMPLES:
-            break
+        # if sample_num == NSAMPLES:
+        # break
 
 
 def dirichlet_inference(
@@ -109,7 +109,7 @@ def run(namespace):
     else:
         pseudo_path.mkdir()
 
-    model = UNETNetwork(numberClass=3)
+    model = UNETNetwork(number_class=3)
     model.load_state_dict(torch.load(namespace.model))
     model.eval()
     model.cuda()

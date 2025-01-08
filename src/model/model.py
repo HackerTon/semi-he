@@ -13,7 +13,7 @@ class BackboneType(Enum):
 
 
 class UNETNetwork(nn.Module):
-    def __init__(self, numberClass):
+    def __init__(self, number_class):
         super().__init__()
         backbone = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
         self.backbone = create_feature_extractor(
@@ -57,7 +57,7 @@ class UNETNetwork(nn.Module):
         )
         self.convfinal = nn.Conv2d(
             in_channels=128,
-            out_channels=numberClass,
+            out_channels=number_class,
             kernel_size=1,
         )
 
