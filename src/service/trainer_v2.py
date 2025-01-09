@@ -10,7 +10,7 @@ from src.experiment.he_experiment import (
 )
 from src.loss import dice_index
 from src.service.base_trainer import BaseTrainer
-from src.service.ema import EMA, EMAFunction
+from src.service.ema import EMAFunction
 from src.service.parameter import Parameter
 
 
@@ -139,9 +139,10 @@ class TrainerV2(BaseTrainer):
 
         self.model.eval()
         self.model_teacher.eval()
-        with torch.no_grad():
+
+        for data in self.test_dataloader:
             with torch.autocast(device_type=self.parameter.device, dtype=self.dtype):
-                for data in self.test_dataloader:
+                with torch.no_grad():
                     inputs: torch.Tensor
                     labels: torch.Tensor
                     inputs, labels, uncertainty = data
