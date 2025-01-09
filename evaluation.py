@@ -7,8 +7,7 @@ from torchvision.io.image import write_png
 from torchvision.transforms.v2 import Compose
 from tqdm import tqdm
 
-from src.dataloader.dataset.he_dataset import HeDataset
-from src.dataloader.dataset.he_dataset_direct import HeDatasetBaseline
+from src.dataloader.dataset.ocelot_dataset import OcelotDataset
 from src.dataloader.transform import ImagenetNormalize, ToNormalized
 from src.model.model import UNETNetwork, UNETNetworkModi
 
@@ -130,7 +129,7 @@ def run(namespace):
     model.cuda()
     preprocessor = Compose([ToNormalized(), ImagenetNormalize()])
 
-    dataset = HeDatasetBaseline(namespace.dataset_dir)
+    dataset = OcelotDataset(namespace.dataset_dir)
     train_dataset, test_dataset = random_split(
         dataset,
         [0.8, 0.2],
