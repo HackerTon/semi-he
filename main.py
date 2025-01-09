@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 
 from src.service.parameter import Parameter
-from src.service.trainer_baseline import TrainerDirichlet
+from src.service.trainer_dirichlet import TrainerDirichlet
 
 
 def run(namespace: argparse.Namespace):

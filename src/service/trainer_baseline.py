@@ -16,7 +16,7 @@ from src.service.base_trainer import BaseTrainer
 from src.service.parameter import Parameter
 
 
-class TrainerDirichlet(BaseTrainer):
+class TrainerBaseline(BaseTrainer):
     def __init__(self, parameter: Parameter):
         super().__init__(parameter)
         self._setup()

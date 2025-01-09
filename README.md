@@ -111,3 +111,19 @@ python main.py --path data/ocelot_pseudo_dirichlet \
 --epoch 500 \
 --pretrain_path data/model/20241211_004039_tiger_proposed_fix_lambda_0.02max_500_bs16/361_tiger_proposed_fix_lambda_0.02max_500_bs16_model.pt
 ```
+
+5. Evaluate proposed on Ocelot dataset
+```
+python evaluation.py \
+--model 'data/model/20250110_040911_ocelot_proposed_epoch500_bs16_pseudo/499_ocelot_proposed_epoch500_bs16_pseudo_model.pt' \
+--dataset_dir /mnt/storage/ocelot2023_v1.0.1 \         
+--mode dirichlet
+```
+
+6. Evaluate baseline on Ocelot dataset
+```
+python evaluation.py \
+--model data/model/20250110_012619_ocelot_baseline_epoch500_bs16_pseudo/499_ocelot_baseline_epoch500_bs16_pseudo_model.pt \
+--dataset_dir /mnt/storage/ocelot2023_v1.0.1 \         
+--mode baseline
+```

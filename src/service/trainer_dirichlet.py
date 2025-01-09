@@ -39,6 +39,7 @@ class TrainerDirichlet(BaseTrainer):
         weights = torch.load(self.parameter.pretrain_path)
         self.model.load_state_dict(weights, strict=False)
         self.model_teacher.load_state_dict(weights, strict=False)
+        self.model = self.model.to(self.parameter.device)
         self.model_teacher = self.model_teacher.to(self.parameter.device)
 
         self.preprocessor = v2.Compose(
@@ -60,7 +61,7 @@ class TrainerDirichlet(BaseTrainer):
         for epoch in tqdm(range(self.parameter.epoch)):
             self._train_one_epoch(epoch)
             self._eval_one_epoch(epoch)
-            self._save(model=self.model, epoch=epoch)
+            self._save(model=self.model_teacher, epoch=epoch)
 
     def _train_one_epoch(self, epoch):
         times_to_update_ema = 10
