@@ -40,7 +40,7 @@ class TrainerV2(BaseTrainer):
             self._train_one_epoch(epoch)
             if self.test_dataloader is not None:
                 self._eval_one_epoch(epoch)
-            self._save(model=self.model, epoch=epoch)
+            self._save(model=self.model_teacher, epoch=epoch)
 
     def _train_one_epoch(self, epoch):
         times_to_update_ema = 10
