@@ -11,6 +11,9 @@ Example command
 `python main.py -p data/textocr -b 32 -x 0 -m mps -l 0.001 -e 50 -n experimentname`
 
 ## semi supervised
+* Train baseline on tiger
+* Train proposed on tiger
+
 * Generate pseudo-label for baseline
 ```
 python generate_pseudolabel.py \
@@ -33,17 +36,28 @@ python generate_pseudolabel.py \
 python main.py --path data/ukmtils_pseudo_baseline \
 --batchsize 16 \
 --mode cuda \
---learning_rate 0.0001 \
+--learning_rate 0.001 \
 --name 'ukmtils baseline epoch500 bs16 pseudo' \
 --epoch 500 \ 
---pretrain_path data/model/20241221_185129_tiger_baseline_500_bs16_pseudo/
+--pretrain_path data/model/20241211_013306_tiger_baseline_fix_lambda_0.02max_500_bs16/499_tiger_baseline_fix_lambda_0.02max_500_bs16_model.pt
+```
+
+* Train proposed on pseudo-label
+```
+python main.py --path data/ukmtils_pseudo \
+--batchsize 16 \
+--mode cuda \
+--learning_rate 0.001 \
+--name 'ukmtils proposed epoch500 bs16 pseudo' \
+--epoch 500 \ 
+--pretrain_path data/model/20241211_004039_tiger_proposed_fix_lambda_0.02max_500_bs16/361_tiger_proposed_fix_lambda_0.02max_500_bs16_model.pt
 ```
 
 ```
 python main.py --path /mnt/storage/ocelot2023_v1.0.1 \
 --batchsize 16 \
 --mode cuda \
---learning_rate 0.0001 \
+--learning_rate 0.001 \
 --name 'ocelot baseline epoch500 bs16 pseudo' \
 --epoch 500 \
 --pretrain_path data/model/20241221_185129_tiger_baseline_500_bs16_pseudo/499_tiger_baseline_500_bs16_pseudo_model.pt
