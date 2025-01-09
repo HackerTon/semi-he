@@ -10,19 +10,23 @@ Run `python main.py -p {dataset} -b {batch size} -x {experiment number} -m {comp
 Example command 
 `python main.py -p data/textocr -b 32 -x 0 -m mps -l 0.001 -e 50 -n experimentname`
 
-## semi supervised
+# semi supervised
+## UKMTIGER
 * Train baseline on tiger
 * Train proposed on tiger
 
-* Generate pseudo-label for baseline
+
+## UKMTILS
+1. Generate pseudo-label for baseline
 ```
 python generate_pseudolabel.py \
---model data/model/20241211_013306_tiger_baseline_fix_lambda_0.02max_500_bs16 499_tiger_baseline_fix_lambda_0.02max_500_bs16_model.pt \
+--model data/model/20241211_013306_tiger_baseline_fix_lambda_0.02max_500_bs16/499_tiger_baseline_fix_lambda_0.02max_500_bs16_model.pt \
 --dataset_dir /mnt/storage/Dataset130_ukmtils \
 --pseudo_dir data/ukmtils_pseudo_b \
 --mode baseline
 ```
-* Generate pseudo-label for proposed model
+
+2. Generate pseudo-label for proposed model
 ```
 python generate_pseudolabel.py \
 --model data/model/20241211_004039_tiger_proposed_fix_lambda_0.02max_500_bs16/361_tiger_proposed_fix_lambda_0.02max_500_bs16_model.pt \
@@ -31,7 +35,7 @@ python generate_pseudolabel.py \
 --mode dirichlet
 ```
 
-* Train baseline on pseudo-label
+3. Train baseline on pseudo-label
 ```
 python main.py --path data/ukmtils_pseudo_baseline \
 --batchsize 16 \
@@ -42,7 +46,7 @@ python main.py --path data/ukmtils_pseudo_baseline \
 --pretrain_path data/model/20241211_013306_tiger_baseline_fix_lambda_0.02max_500_bs16/499_tiger_baseline_fix_lambda_0.02max_500_bs16_model.pt
 ```
 
-* Train proposed on pseudo-label
+4. Train proposed on pseudo-label
 ```
 python main.py --path data/ukmtils_pseudo \
 --batchsize 16 \
@@ -53,26 +57,57 @@ python main.py --path data/ukmtils_pseudo \
 --pretrain_path data/model/20241211_004039_tiger_proposed_fix_lambda_0.02max_500_bs16/361_tiger_proposed_fix_lambda_0.02max_500_bs16_model.pt
 ```
 
-```
-python main.py --path /mnt/storage/ocelot2023_v1.0.1 \
---batchsize 16 \
---mode cuda \
---learning_rate 0.001 \
---name 'ocelot baseline epoch500 bs16 pseudo' \
---epoch 500 \
---pretrain_path data/model/20241221_185129_tiger_baseline_500_bs16_pseudo/499_tiger_baseline_500_bs16_pseudo_model.pt
-```
-
-* Evaluate on dirichlet UKMTILS
+5. Evaluate on dirichlet UKMTILS
 ```
 python evaluation.py --model data/model/20241230_151702_proposed/499_proposed_model.pt \
 --dataset_dir data/ukmtils_pseudo \         
 --mode dirichlet
 ```
 
-* Evaluate on baseline UKMTILS
+6. Evaluate on baseline UKMTILS
 ```
 python evaluation.py --model data/model/20241221_185129_tiger_baseline_500_bs16_pseudo/499_tiger_baseline_500_bs16_pseudo_model.pt \
 --dataset_dir data/ukmtils_pseudo_baseline \
 --mode baseline 
+```
+
+## Ocelot
+1. Generate Ocelot pseudo dataset for baseline
+```
+python generate_pseudolabel.py \
+--model data/model/20241211_013306_tiger_baseline_fix_lambda_0.02max_500_bs16/499_tiger_baseline_fix_lambda_0.02max_500_bs16_model.pt \
+--dataset_dir /mnt/storage/ocelot2023_v1.0.1 \
+--pseudo_dir data/ocelot_pseudo_baseline \
+--mode baseline
+```
+
+2. Generate Ocelot pseudo dataset for proposed
+```
+python generate_pseudolabel.py \
+--model data/model/20241211_004039_tiger_proposed_fix_lambda_0.02max_500_bs16/361_tiger_proposed_fix_lambda_0.02max_500_bs16_model.pt \
+--dataset_dir /mnt/storage/ocelot2023_v1.0.1 n\
+--pseudo_dir data/ocelot_pseudo_dirichlet \
+--mode dirichlet
+```
+
+3. Train Ocelot pseudo dataset on baseline
+```
+python main.py --path data/ocelot_pseudo_baseline \
+--batchsize 16 \
+--mode cuda \
+--learning_rate 0.0001 \
+--name 'ocelot baseline epoch500 bs16 pseudo' \
+--epoch 500 \
+--pretrain_path data/model/20241221_185129_tiger_baseline_500_bs16_pseudo/499_tiger_baseline_500_bs16_pseudo_model.pt
+```
+
+4. Train Ocelot pseudo dataset on proposed
+```
+python main.py --path data/ocelot_pseudo_dirichlet \
+--batchsize 16 \
+--mode cuda \
+--learning_rate 0.0001 \
+--name 'ocelot proposed epoch500 bs16 pseudo' \
+--epoch 500 \
+--pretrain_path data/model/20241211_004039_tiger_proposed_fix_lambda_0.02max_500_bs16/361_tiger_proposed_fix_lambda_0.02max_500_bs16_model.pt
 ```

@@ -5,7 +5,7 @@ from torch.utils.data import random_split
 from torch.utils.data.dataloader import DataLoader
 from torchvision.transforms import v2
 
-from src.dataloader.dataset.he_dataset_direct import HeDataset
+from src.dataloader.dataset.standard_dataset import StandardDatasetBaseline
 from src.dataloader.transform import ImagenetNormalize, ToNormalized
 from src.experiment.experimentbase import ExperimentBase
 from src.model.model import UNETNetwork, UNETNetworkModi
@@ -21,8 +21,8 @@ class HeExperiment(ExperimentBase):
             batch_size=parameter.batch_size_train,
         )
 
-        self.model = UNETNetworkModi(numberClass=3)
-        self.model_teacher = UNETNetworkModi(numberClass=3)
+        self.model = UNETNetworkModi(number_class=3)
+        self.model_teacher = UNETNetworkModi(number_class=3)
         self.preprocessor = v2.Compose(
             [
                 ToNormalized(),
@@ -108,7 +108,7 @@ def create_dataloader(
     batch_size: int,
     num_workers: int = 4,
 ) -> Tuple[DataLoader, DataLoader]:
-    global_dataset = HeDataset(directory_path=path)
+    global_dataset = StandardDatasetBaseline(directory_path=path)
     SPLIT_PERCENTAGE = 0.8
 
     train_dataset, test_dataset = random_split(

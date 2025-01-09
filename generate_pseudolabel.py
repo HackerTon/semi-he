@@ -8,6 +8,7 @@ from torchvision.transforms.v2 import Compose
 from tqdm import tqdm
 
 from src.dataloader.dataset.he_dataset import HeDataset
+from src.dataloader.dataset.ocelot_dataset import OcelotDataset
 from src.dataloader.transform import ImagenetNormalize, ToNormalized
 from src.model.model import UNETNetwork
 
@@ -115,7 +116,8 @@ def run(namespace):
     model.cuda()
     preprocessor = Compose([ToNormalized(), ImagenetNormalize()])
 
-    dataset = HeDataset(namespace.dataset_dir, "data/temp")
+    # dataset = HeDataset(namespace.dataset_dir, "data/temp")
+    dataset = OcelotDataset(namespace.dataset_dir)
     dataloader = DataLoader(
         dataset,
         batch_size=BATCH_SIZE,

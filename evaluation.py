@@ -121,7 +121,7 @@ def run(namespace):
     if namespace.mode == "baseline":
         model = UNETNetwork(number_class=3)
     elif namespace.mode == "dirichlet":
-        model = UNETNetworkModi(numberClass=3)
+        model = UNETNetworkModi(number_class=3)
     else:
         print("mode is not baseline or dirichlet")
 

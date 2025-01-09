@@ -8,12 +8,18 @@ from torch.utils.data.dataloader import DataLoader
 from torchvision.transforms import v2
 from tqdm import tqdm
 
-from src.dataloader.dataset.standard_dataset import StandardDatasetBaseline
+from src.dataloader.dataset.standard_dataset import StandardDatasetDirichlet
 from src.dataloader.transform import ImagenetNormalize, ToNormalized
 from src.loss import dice_index
-from src.model.model import UNETNetwork
+from src.model.model import UNETNetworkModi
 from src.service.base_trainer import BaseTrainer
 from src.service.parameter import Parameter
+from src.utils.dirichlet_utils import (
+    combined_dirichlet,
+    convert_belief_mass_to_prediction,
+)
+from src.experiment.he_experiment import consistency_loss, overall_with_uncertainty
+from src.service.ema import EMAFunction
 
 
 class TrainerDirichlet(BaseTrainer):
@@ -27,23 +33,28 @@ class TrainerDirichlet(BaseTrainer):
             path=self.parameter.data_path,
             batch_size=self.parameter.batch_size_train,
         )
-        self.model = UNETNetwork(number_class=3)
+        self.model = UNETNetworkModi(number_class=3)
+        self.model_teacher = UNETNetworkModi(number_class=3)
+
         weights = torch.load(self.parameter.pretrain_path)
         self.model.load_state_dict(weights, strict=False)
+        self.model_teacher.load_state_dict(weights, strict=False)
+        self.model_teacher = self.model_teacher.to(self.parameter.device)
+
         self.preprocessor = v2.Compose(
             [
                 ToNormalized(),
                 ImagenetNormalize(),
             ]
         )
-        self.model = self.model.to(self.parameter.device)
         self.optimizer = torch.optim.Adam(
             params=self.model.parameters(),
             lr=self.parameter.learning_rate,
             fused=True if self.parameter.device == "cuda" else False,
         )
-        self.loss_fn = baseline_loss
+        self.loss_fn = overall_with_uncertainty
         self.dtype = torch.float16
+        self.ema_fn = EMAFunction()
 
     def train(self):
         for epoch in tqdm(range(self.parameter.epoch)):
@@ -52,12 +63,14 @@ class TrainerDirichlet(BaseTrainer):
             self._save(model=self.model, epoch=epoch)
 
     def _train_one_epoch(self, epoch):
+        times_to_update_ema = 10
         rate_to_print = max(
             math.floor(len(self.train_dataloader) * self.parameter.train_report_rate), 1
         )
         running_loss = 0.0
         running_iou = 0.0
         self.model.train()
+        lambda_t = torch.tensor((epoch / self.parameter.epoch) * 0.02)
         scaler = torch.cuda.amp.grad_scaler.GradScaler()
 
         for index, data in enumerate(self.train_dataloader):
@@ -65,20 +78,59 @@ class TrainerDirichlet(BaseTrainer):
             with torch.autocast(device_type=self.parameter.device, dtype=self.dtype):
                 inputs: torch.Tensor
                 labels: torch.Tensor
-                inputs, labels = data
+                inputs, labels, uncertainty = data
 
-                inputs, labels = (
+                inputs, labels, uncertainty = (
                     inputs.to(self.parameter.device),
                     labels.to(self.parameter.device),
+                    uncertainty.to(self.parameter.device),
                 )
                 inputs, labels = self.preprocessor(inputs, labels)
-                output_logits = self.model(inputs)
-                loss = self.loss_fn(output_logits, labels)
-                iou_score = dice_index(output_logits.sigmoid(), labels)
+
+                outputs = self.model(inputs)
+                output_belief, output_uncertainty = combined_dirichlet(
+                    outputs[0].relu(),
+                    outputs[1].relu(),
+                )
+                evidences = output_belief * 3 / output_uncertainty
+                prediction = convert_belief_mass_to_prediction(
+                    output_belief,
+                    output_uncertainty,
+                )
+                loss = self.loss_fn(
+                    evidences,
+                    labels,
+                    lambda_t,
+                    uncertainty,
+                )
+
+                with torch.no_grad():
+                    teacher_output = self.model_teacher(inputs)
+                    teacher_output_belief, teacher_output_uncertainty = (
+                        combined_dirichlet(
+                            teacher_output[0].relu(),
+                            teacher_output[1].relu(),
+                        )
+                    )
+                    teacher_prediction = convert_belief_mass_to_prediction(
+                        teacher_output_belief,
+                        teacher_output_uncertainty,
+                    )
+
+                loss += consistency_loss(prediction, teacher_prediction)
+                iou_score = dice_index(prediction, labels)
 
             scaler.scale(loss).backward()
             scaler.step(optimizer=self.optimizer)
             scaler.update()
+
+            # Update teacher model
+            if (index + 1) % times_to_update_ema == 0:
+                self.ema_fn.update_parameter_to_model(
+                    0.999,
+                    self.model_teacher,
+                    self.model.named_parameters(),
+                )
 
             running_loss += loss.item()
             running_iou += iou_score.item()
@@ -101,23 +153,38 @@ class TrainerDirichlet(BaseTrainer):
     def _eval_one_epoch(self, epoch):
         sum_loss = 0.0
         sum_iou = 0.0
+        lambda_t = torch.tensor((epoch / self.parameter.epoch) * 0.02)
 
         self.model.eval()
+        self.model_teacher.eval()
+
         for data in self.test_dataloader:
             with torch.autocast(device_type=self.parameter.device, dtype=self.dtype):
                 inputs: torch.Tensor
                 labels: torch.Tensor
-                inputs, labels = data
+                inputs, labels, uncertainty = data
 
-                inputs, labels = (
+                inputs, labels, uncertainty = (
                     inputs.to(self.parameter.device),
                     labels.to(self.parameter.device),
+                    uncertainty.to(self.parameter.device),
                 )
+                inputs, labels = self.preprocessor(inputs, labels)
+
                 with torch.no_grad():
-                    inputs, labels = self.preprocessor(inputs, labels)
-                    output_logits = self.model(inputs)
-                    loss = self.loss_fn(output_logits, labels)
-                    iou_score = dice_index(output_logits.sigmoid(), labels)
+                    outputs = self.model_teacher(inputs)
+
+                output_belief, output_uncertainty = combined_dirichlet(
+                    outputs[0].relu(),
+                    outputs[1].relu(),
+                )
+                evidences = output_belief * 3 / output_uncertainty
+                prediction = convert_belief_mass_to_prediction(
+                    output_belief,
+                    output_uncertainty,
+                )
+                loss = self.loss_fn(evidences, labels, lambda_t, uncertainty)
+                iou_score = dice_index(prediction, labels)
 
             sum_loss += loss.item()
             sum_iou += iou_score.item()
@@ -140,7 +207,7 @@ def create_dataloader(
     batch_size: int,
     num_workers: int = 4,
 ) -> Tuple[DataLoader, DataLoader]:
-    global_dataset = StandardDatasetBaseline(directory_path=path)
+    global_dataset = StandardDatasetDirichlet(directory_path=path)
     SPLIT_PERCENTAGE = 0.8
 
     train_dataset, test_dataset = random_split(

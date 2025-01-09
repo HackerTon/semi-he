@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 from torchvision.io.image import ImageReadMode, read_image
 
 
-class HeDataset(Dataset):
+class StandardDatasetDirichlet(Dataset):
     def __init__(self, directory_path: str):
         self.directory = Path(directory_path)
         self._initialize_dataset()
@@ -48,7 +48,7 @@ class HeDataset(Dataset):
         return image, label, uncertainty.view([256, 256]).squeeze()
 
 
-class HeDatasetBaseline(Dataset):
+class StandardDatasetBaseline(Dataset):
     def __init__(self, directory_path: str):
         self.directory = Path(directory_path)
         self._initialize_dataset()
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     from torchvision.io import write_jpeg
     from torch.utils.data import DataLoader
 
-    dataset = HeDataset("data/ukmtils_pseudo")
+    dataset = StandardDatasetDirichlet("data/ukmtils_pseudo")
     i = 0
     for image, mask, uncertainty in DataLoader(dataset, shuffle=False, num_workers=4):
         # write_jpeg(image, "image.jpg")
