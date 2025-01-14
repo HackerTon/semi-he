@@ -29,7 +29,7 @@ python generate_pseudolabel.py \
 2. Generate pseudo-label for proposed model
 ```
 python generate_pseudolabel.py \
---model data/model/20241211_004039_tiger_proposed_fix_lambda_0.02max_500_bs16/361_tiger_proposed_fix_lambda_0.02max_500_bs16_model.pt \
+--model data/model/20241221_163831_tiger_proposed_lambda_0.02max_500_bs16_pseudo/499_tiger_proposed_lambda_0.02max_500_bs16_pseudo_model.pt \
 --dataset_dir /mnt/storage/Dataset130_ukmtils \
 --pseudo_dir data/ukmtils_pseudo \
 --mode dirichlet
@@ -54,7 +54,7 @@ python main.py --path data/ukmtils_pseudo \
 --learning_rate 0.001 \
 --name 'ukmtils proposed epoch500 bs16 pseudo' \
 --epoch 500 \ 
---pretrain_path data/model/20241211_004039_tiger_proposed_fix_lambda_0.02max_500_bs16/361_tiger_proposed_fix_lambda_0.02max_500_bs16_model.pt
+--pretrain_path data/model/20241221_163831_tiger_proposed_lambda_0.02max_500_bs16_pseudo/499_tiger_proposed_lambda_0.02max_500_bs16_pseudo_model.pt
 ```
 
 5. Evaluate on dirichlet UKMTILS
@@ -84,7 +84,7 @@ python generate_pseudolabel.py \
 2. Generate Ocelot pseudo dataset for proposed
 ```
 python generate_pseudolabel.py \
---model data/model/20241211_004039_tiger_proposed_fix_lambda_0.02max_500_bs16/361_tiger_proposed_fix_lambda_0.02max_500_bs16_model.pt \
+--model data/model/20241221_163831_tiger_proposed_lambda_0.02max_500_bs16_pseudo/499_tiger_proposed_lambda_0.02max_500_bs16_pseudo_model.pt \
 --dataset_dir /mnt/storage/ocelot2023_v1.0.1 n\
 --pseudo_dir data/ocelot_pseudo_dirichlet \
 --mode dirichlet
@@ -109,7 +109,7 @@ python main.py --path data/ocelot_pseudo_dirichlet \
 --learning_rate 0.0001 \
 --name 'ocelot proposed epoch500 bs16 pseudo' \
 --epoch 500 \
---pretrain_path data/model/20241211_004039_tiger_proposed_fix_lambda_0.02max_500_bs16/361_tiger_proposed_fix_lambda_0.02max_500_bs16_model.pt
+--pretrain_path data/model/20241221_163831_tiger_proposed_lambda_0.02max_500_bs16_pseudo/499_tiger_proposed_lambda_0.02max_500_bs16_pseudo_model.pt
 ```
 
 5. Evaluate proposed on Ocelot dataset
